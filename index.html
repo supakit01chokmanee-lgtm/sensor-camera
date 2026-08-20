@@ -1,1 +1,60 @@
 # sensor-camera
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ทดสอบเซนเซอร์</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; }
+    button { font-size: 18px; padding: 12px 24px; margin: 10px; }
+    #status { font-weight: bold; margin: 15px 0; }
+    #reading { font-size: 24px; margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <h2>ทดสอบเชื่อมต่อเซนเซอร์</h2>
+  <button onclick="connectSensor()">เชื่อมต่อเซนเซอร์</button>
+  <div id="status">ยังไม่ได้เชื่อมต่อ</div>
+  <div id="reading">
+    <div>🌡️ อุณหภูมิ: <span id="temp">-</span></div>
+    <div>💧 ความชื้น: <span id="humidity">-</span></div>
+  </div>
+
+  <script>
+    const SERVICE_UUID = 'ebe0ccb0-7a0a-4b0c-8a1a-6ff2997da3a6';
+    const CHAR_UUID = 'ebe0ccc1-7a0a-4b0c-8a1a-6ff2997da3a6';
+
+    async function connectSensor() {
+      try {
+        document.getElementById('status').innerText = 'กำลังค้นหาเซนเซอร์...';
+
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: 'LYWSD03MMC' }],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        document.getElementById('status').innerText = 'กำลังเชื่อมต่อ...';
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        const characteristic = await service.getCharacteristic(CHAR_UUID);
+
+        await characteristic.startNotifications();
+        characteristic.addEventListener('characteristicvaluechanged', handleData);
+
+        document.getElementById('status').innerText = '✅ เชื่อมต่อสำเร็จ: ' + device.name;
+      } catch (error) {
+        document.getElementById('status').innerText = '❌ เกิดข้อผิดพลาด: ' + error;
+      }
+    }
+
+    function handleData(event) {
+      const value = event.target.value;
+      const temp = value.getInt16(0, true) / 100;
+      const humidity = value.getUint8(2);
+      document.getElementById('temp').innerText = temp.toFixed(1) + ' °C';
+      document.getElementById('humidity').innerText = humidity + ' %';
+    }
+  </script>
+</body>
+</html>
